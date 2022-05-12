@@ -10,7 +10,7 @@ type GameHistory {
     tie: Boolean!
 }
 
-type Opponent{
+type Player{
     _id: ID!
     email: String!
     name: Name!
@@ -23,7 +23,8 @@ type Opponent{
     resetPasswordToken: String
     company: String,
     position: String,
-    foundFrom: String
+    foundFrom: String,
+    isGoogle: Boolean!
 }
 
 type Move {
@@ -47,15 +48,18 @@ type AuthResponse {
 }
 
 type Query{
-    getPlayerById(id: String!): Opponent!
-    getPlayer: Opponent!
-    getAllPlayers: [Opponent]!
+    getPlayerById(id: String!): Player!
+    getPlayer: Player!
+    getAllPlayers: [Player]!
     getGame(gameID: String!) : Game!
     testAuth: String!
+    testGoogle(tokenId: String!): String!
 }
 
 type Mutation {
     register(email: String!, password: String!, firstName: String!, lastName: String!): AuthResponse! #JWT
+    registerGoogle(email: String!, firstName: String!, lastName: String!, googleToken: String!) : AuthResponse!
+    loginGoogle(email: String!, firstName: String!, lastName: String!, googleToken: String!): AuthResponse!
     completeProfile(company: String, position: String, foundFrom: String) : AuthResponse!
     addMove(gameID: String!, fen: String!): Game!
     login(email: String!, password: String!): AuthResponse! #JWT

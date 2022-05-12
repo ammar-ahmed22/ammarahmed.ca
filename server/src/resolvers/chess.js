@@ -5,6 +5,9 @@ import crypto from "crypto";
 import sendEmail from "../utils/sendEmail";
 import readContent from "../utils/readContent";
 import { getPathPrefix } from "../utils/helpers";
+import { OAuth2Client } from "google-auth-library";
+import verifyGoogleUser from "../utils/verifyGoogleUser";
+import { createPlayerWithGame } from "../utils/playerFactory";
 
 // RENAME EVERYTHING WITH OPP TO PLAYER
 
@@ -45,16 +48,39 @@ const chessQueries = {
             const player = await Player.findById(id);
             
             return player;
+        },
+        testGoogle: async (_, { tokenId }, auth) => {
+            //console.log(auth);
+            // const client = new OAuth2Client("137764403028-edju7i0l6f6j0mj9inc4t41m81njc3sc.apps.googleusercontent.com");
+
+            // const ticket = await client.verifyIdToken({
+            //     idToken: tokenId,
+            //     audience: "137764403028-edju7i0l6f6j0mj9inc4t41m81njc3sc.apps.googleusercontent.com"
+            // });
+
+            // const payload = ticket.getPayload();
+
+            // const userId = payload.sub;
+            const res = await verifyGoogleUser(tokenId);
+
+            if (res.error){
+                throw new UserInputError("Google tokenId cannot be verified");
+            }
+
+
+
+
+            return res.userID;
         }
     }
 const chessMutations = {
         register: async (_, { firstName, lastName, email, password }) => {
 
-            const existingOpp = await Player.find({ email })
+            const existingPlayer = await Player.findOne({ email })
 
-            if (existingOpp.length){
+            if (existingPlayer){
                 console.log(`PLAYER WITH EMAIL: ${email} ALREADY EXISTS`)
-                console.log(existingOpp)
+                console.log(existingPlayer)
                 throw new UserInputError("Player with email already exists", {
                     email
                 })
@@ -65,37 +91,71 @@ const chessMutations = {
                 last: lastName,
             }
 
-            let game;
-
-            const player = await Player.create({
-                name,
-                email,
-                password,
-                signedupAt: new Date(),
-                currentGameID: null,
-                permissions: ["read:own_user", "write:own_user"],
-                gameHistory: [],
-                allGameIDs: [],
-            })
-
-            if (player){
-                game = await Game.create({
-                    playerID: player.id,
-                    moves: [{fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', playedAt: null}],
-                    playerToMove: true,
-                    playerWon: false,
-                    tied: false
-                })
-
-                if (game){
-                    player.currentGameID = game.id;
-                    player.allGameIDs.push(game.id);
-                    await player.save();
-                }
-            }
+            const { player } = await createPlayerWithGame({ email, password, name });
 
             return {token: player.getSignedJWT(), message: "Player created!"};
             
+        },
+        registerGoogle: async (_, { email, firstName, lastName, googleToken }) => {
+            
+            const res = await verifyGoogleUser(googleToken);
+            //console.log(res);
+
+            if (res.error){
+                throw new UserInputError("Google token could not be verified")
+            }
+
+            const existingPlayer = await Player.findOne({ email });
+
+            if (existingPlayer){
+                if (existingPlayer.isGoogle){
+                    // handle this case
+                    return { token: existingPlayer.getSignedJWT(), message: "Google user already exists" }
+                }
+
+                throw new UserInputError("Player with email already exists", { email });
+            }
+
+            const name = {
+                first: firstName,
+                last: lastName,
+            }
+
+            const { player } = await createPlayerWithGame({ name, email, isGoogle: true, password: res.userID });
+
+            return { token: player.getSignedJWT(), message: "Google user created!" };
+
+        },
+        loginGoogle: async (_, { email, googleToken, firstName, lastName }) => {
+            const res = await verifyGoogleUser(googleToken);
+
+            if (res.error){
+                throw new UserInputError("Google token could not be verified");
+            }
+
+            const player = await Player.findOne({ email, isGoogle: true });
+
+            if (player){
+                return { token: player.getSignedJWT(), message: "Google user logged in" }
+            }else{
+                const { player: newPlayer } = await createPlayerWithGame({
+                    name:{
+                        first: firstName,
+                        last: lastName
+                    },
+                    password: res.userID,
+                    name: {
+                        first: firstName,
+                        last: lastName
+                    },
+                    email,
+                    isGoogle: true
+                })
+
+                if (newPlayer){
+                    return { token: newPlayer.getSignedJWT(), message: "Complete profile for new Google user" }
+                }
+            }
         },
         completeProfile: async (_, { company, position, foundFrom }, { auth: { id } }) => {
             const player = await Player.findById(id);

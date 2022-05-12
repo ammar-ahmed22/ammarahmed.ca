@@ -14,6 +14,7 @@ library.add(fab, faFileDownload, faCircle, faExternalLinkAlt, faSearch, faEnvelo
 const fonts = {
   body: "Manrope, sans-serif",
   heading: "DM Serif Display, sans-serif",
+  google: "Roboto, sans-serif"
 }
 
 const colors = {

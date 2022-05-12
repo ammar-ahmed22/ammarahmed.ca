@@ -6,20 +6,21 @@ import crypto from "crypto";
 const PlayerSchema = new mongoose.Schema({
     name: {
         first: { type: String, required: true },
-        last: { type: String, required: true },
+        last: { type: String, required: false },
     },
     company: String,
     position: String,
     foundFrom: String,
     email: {type: String, required: [true, "Please provide an e-mail"], unique: true, match: [/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/, "Please provide a valid e-mail"]},
-    password: {type: String, required: [true, "Please provide a password"], minlength: 6, select: false},
+    password: {type: String, required: false, minlength: 6, select: false},
     signedupAt: { type: Date, required: true},
     permissions: Array,
     currentGameID: String,
     resetPasswordExpire: Date,
     resetPasswordToken: String,
     gameHistory: [{ gameID: String, won: Boolean, tie: Boolean}],
-    allGameIDs: Array
+    allGameIDs: Array,
+    isGoogle: Boolean,
 }, { timestamps: true })
 
 // Called before saved to DB
