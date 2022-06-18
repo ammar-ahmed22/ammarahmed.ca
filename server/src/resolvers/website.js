@@ -178,7 +178,7 @@ const webQueries = {
         dbId: NOTION_SKILL_DB_ID,
       })
 
-      console.log(allSkills[0].properties.Competency)
+      
 
       const res = allSkills
       .map( page => {
